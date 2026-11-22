@@ -1,0 +1,47 @@
+name: Build APK
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "8.7"
+
+      # The sources were uploaded through the browser as one zip file.
+      - name: Unpack sources
+        run: |
+          if [ -f source.zip ]; then unzip -o source.zip; fi
+
+      - name: Restore signing key
+        run: base64 -d app/classeur.keystore.b64 > app/classeur.keystore
+
+      - name: Build
+        run: gradle assembleRelease --no-daemon --stacktrace
+
+      - name: Rename APK
+        run: cp app/build/outputs/apk/release/app-release.apk ClasseurSciences.apk
+
+      - name: Publish download link
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v1.0.${{ github.run_number }}
+          name: Classeur Sciences 1.0.${{ github.run_number }}
+          body: "Télécharger ClasseurSciences.apk sur le téléphone puis l'installer."
+          files: ClasseurSciences.apk
+          make_latest: true
